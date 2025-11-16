@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
+    "crypto-js": "^4.2.0",
+    "ethereum-blockies-base64": "^1.0.2",
     "next": "16.0.3",
     "react": "19.2.0",
     "react-dom": "19.2.0"
