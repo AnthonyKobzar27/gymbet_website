@@ -20,9 +20,9 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
   const [loginModalVisible, setLoginModalVisible] = useState(false);
 
   const navLinks = [
-    { href: '/', label: 'HOME', icon: '🏠' },
-    { href: '/bets', label: 'BETS', icon: '🏆' },
-    { href: '/profile', label: 'PROFILE', icon: '👤' },
+    { href: '/', label: 'HOME' },
+    { href: '/bets', label: 'BETS' },
+    { href: '/profile', label: 'PROFILE' },
   ];
 
   const handleConnect = () => {
@@ -44,7 +44,7 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
               GYMBET
             </div>
 
-            {/* Navigation Links - Desktop */}
+            {/* Navigation Links - Desktop Only */}
             <nav className="hidden md:flex items-center gap-4 lg:gap-6">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
@@ -57,23 +57,6 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
                     }`}
                   >
                     {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Mobile Navigation */}
-            <nav className="flex md:hidden items-center gap-3">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`text-lg ${isActive ? 'opacity-100' : 'opacity-50'}`}
-                    title={link.label}
-                  >
-                    {link.icon}
                   </Link>
                 );
               })}

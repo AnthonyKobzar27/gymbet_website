@@ -7,9 +7,9 @@ export default function TabBar() {
   const pathname = usePathname();
 
   const tabs = [
-    { href: '/', label: 'HOME', icon: '🏠' },
-    { href: '/bets', label: 'BETS', icon: '🏆' },
-    { href: '/profile', label: 'PROFILE', icon: '👤' },
+    { href: '/', label: 'HOME' },
+    { href: '/bets', label: 'BETS' },
+    { href: '/profile', label: 'PROFILE' },
   ];
 
   return (
@@ -27,37 +27,13 @@ export default function TabBar() {
                   isActive ? 'text-white' : 'text-white opacity-70'
                 }`}
               >
-                <div className="text-2xl mb-1">{tab.icon}</div>
-                <div className="text-xs font-bold">{tab.label}</div>
+                <div className="text-sm font-extrabold tracking-wide">{tab.label}</div>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* Desktop Sidebar */}
-      <nav className="hidden lg:flex fixed left-0 top-[73px] bottom-0 w-20 bg-[#0b0930] border-r-4 border-black z-30 flex-col items-center py-6">
-        <div className="flex flex-col items-center gap-8">
-          {tabs.map((tab) => {
-            const isActive = pathname === tab.href;
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg transition-all ${
-                  isActive
-                    ? 'bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                    : 'text-white opacity-70 hover:opacity-100'
-                }`}
-                title={tab.label}
-              >
-                <div className="text-3xl mb-1">{tab.icon}</div>
-                <div className="text-[10px] font-bold">{tab.label}</div>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
     </>
   );
 }

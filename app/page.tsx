@@ -218,14 +218,14 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-full relative overflow-hidden">
+    <div className="min-h-screen relative">
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
         style={{
           backgroundImage: 'url(/AppBackground.jpg)',
         }}
       />
-      <div className="relative z-10 h-full pt-8 pb-5 px-2.5 lg:px-8 lg:pt-10 lg:pb-8 overflow-y-auto">
+      <div className="relative z-10 pt-8 pb-5 px-2.5 lg:px-8 lg:pt-10 lg:pb-8">
         {/* Mobile Layout */}
         <div className="max-w-md mx-auto px-5 lg:hidden">
           <WeeklySplitCard
