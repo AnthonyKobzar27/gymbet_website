@@ -5,11 +5,11 @@ import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { initBalance, getBalance } from '@/lib/transactionUtils';
 import { initStats } from '@/lib/homepageUtils';
-import SHA256 from 'crypto-js/sha256';
+import CryptoJS from 'crypto-js';
 
 // SHA256 hash function (same as React Native app)
 function sha256(input: string): string {
-  return SHA256(input).toString();
+  return CryptoJS.SHA256(input).toString();
 }
 
 interface UserProfile {

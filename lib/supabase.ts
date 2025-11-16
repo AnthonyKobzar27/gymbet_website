@@ -9,7 +9,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Client-side Supabase client (for use in client components)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// TypeScript knows these are defined after the check above
+export const supabase = createClient(supabaseUrl as string, supabaseAnonKey as string, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

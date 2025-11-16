@@ -10,6 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export function createServerClient() {
-  return createClient(supabaseUrl, supabaseAnonKey);
+  // TypeScript knows these are defined after the check above
+  return createClient(supabaseUrl as string, supabaseAnonKey as string);
 }
 

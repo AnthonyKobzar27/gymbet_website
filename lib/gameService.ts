@@ -39,7 +39,7 @@ export interface GameLog {
   game_id: string;
   user_hash: string | null;
   message: string;
-  event_type: 'join' | 'workout' | 'elimination' | 'win' | 'missed_workout' | 'game_start' | 'game_end' | 'chat' | 'proof';
+  event_type: 'join' | 'workout' | 'elimination' | 'win' | 'missed_workout' | 'game_start' | 'game_end' | 'chat' | 'proof' | 'leave';
   created_at: string;
   photo_url?: string | null;
 }
