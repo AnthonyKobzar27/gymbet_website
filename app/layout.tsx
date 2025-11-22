@@ -15,7 +15,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GymBet",
   description: "Discipline challenge community - Bet on your goals and win rewards!",
-  themeColor: "#0b0930",
+  themeColor: "#fdcff3",
   viewport: {
     width: "device-width",
     initialScale: 1,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   other: {
     "mobile-web-app-capable": "yes",

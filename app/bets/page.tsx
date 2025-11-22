@@ -262,13 +262,15 @@ export default function BetsPage() {
         onGameCreated={handleGameCreated}
       />
 
-      <ProofSubmissionModal
-        visible={proofModalVisible}
-        onClose={() => setProofModalVisible(false)}
-        onSubmit={handleSubmitProof}
-        gameId="1"
-        splitType="Push"
-      />
+      {activeGame && (
+        <ProofSubmissionModal
+          visible={proofModalVisible}
+          onClose={() => setProofModalVisible(false)}
+          onSubmit={handleSubmitProof}
+          gameId={activeGame.id}
+          splitType={activeGame.weekly_schedule?.monday || activeGame.weekly_schedule?.tuesday || 'Push'}
+        />
+      )}
     </div>
   );
 }

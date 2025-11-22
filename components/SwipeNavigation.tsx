@@ -21,6 +21,8 @@ export default function SwipeNavigation({ children }: { children: React.ReactNod
   const maxVerticalDistance = 30; // Maximum vertical movement to consider it a horizontal swipe
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024); // lg breakpoint
     };

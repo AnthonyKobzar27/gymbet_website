@@ -21,6 +21,8 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -133,8 +135,8 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
         <DepositModal
           visible={depositModalVisible}
           onClose={() => setDepositModalVisible(false)}
-          onDeposit={(amount) => {
-            console.log('Deposit:', amount);
+          onDeposit={() => {
+            // Balance will be updated via webhook after Stripe payment
             setDepositModalVisible(false);
           }}
         />

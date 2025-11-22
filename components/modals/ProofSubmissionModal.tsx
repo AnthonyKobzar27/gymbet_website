@@ -105,7 +105,13 @@ export default function ProofSubmissionModal({
     if (!context) return;
 
     // Verify we have an active video stream (camera must be running)
-    if (!video.srcObject || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!video.srcObject) {
+      alert('Camera not ready. Please wait for camera to initialize.');
+      return;
+    }
+    
+    // Wait for video to be ready (check readyState)
+    if (video.readyState < video.HAVE_CURRENT_DATA) {
       alert('Camera not ready. Please wait for camera to initialize.');
       return;
     }
