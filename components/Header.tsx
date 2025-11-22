@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,6 +18,16 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
   const pathname = usePathname();
   const [depositModalVisible, setDepositModalVisible] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navLinks = [
     { href: '/', label: 'HOME' },
@@ -35,8 +45,20 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
 
   return (
     <>
-      <header className="bg-transparent sticky top-0 z-50">
-        <div className="flex items-center justify-between px-5 py-4 lg:px-8 lg:py-5">
+      <header className={`sticky top-0 z-50 transition-all duration-300 relative ${
+        isScrolled ? '' : ''
+      }`}>
+        {/* Gradient blur effect - weak at bottom, stronger at top */}
+        {isScrolled && (
+          <div 
+            className="absolute inset-0 pointer-events-none backdrop-blur-md"
+            style={{
+              maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,1) 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,1) 100%)',
+            }}
+          />
+        )}
+        <div className="relative flex items-center justify-between px-5 py-4 lg:px-8 lg:py-5">
           {/* Left Side - Logo and Navigation */}
           <div className="flex items-center gap-4 lg:gap-6">
             {/* Logo/Title */}

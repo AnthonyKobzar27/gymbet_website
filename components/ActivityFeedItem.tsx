@@ -55,17 +55,11 @@ export default function ActivityFeedItem({
       >
         {action}
       </div>
-      {image && (
-        <img
-          src={image}
-          alt="Proof"
-          className="w-full h-48 mt-3 border-2 border-black object-cover"
-        />
-      )}
-      {type === 'proof' && canVote && (
+      {/* Show vote buttons for proof items when user can vote */}
+      {type === 'proof' && canVote && onVote && (
         <div className="flex gap-2 mt-3">
           <button
-            onClick={() => onVote?.(id, 'approve')}
+            onClick={() => onVote(id, 'approve')}
             className={`flex-1 border-2 border-black py-2.5 px-3 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
               userVote === 'approve' ? 'bg-black' : 'bg-white'
             }`}
@@ -79,7 +73,7 @@ export default function ActivityFeedItem({
             </div>
           </button>
           <button
-            onClick={() => onVote?.(id, 'reject')}
+            onClick={() => onVote(id, 'reject')}
             className={`flex-1 border-2 border-black py-2.5 px-3 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
               userVote === 'reject' ? 'bg-black' : 'bg-white'
             }`}
@@ -92,6 +86,15 @@ export default function ActivityFeedItem({
               ✕ REJECT {rejections > 0 ? `(${rejections})` : ''}
             </div>
           </button>
+        </div>
+      )}
+      {image && (
+        <div className="mt-3 flex justify-center">
+          <img
+            src={image}
+            alt="Proof"
+            className="max-w-full max-h-64 border-2 border-black object-contain"
+          />
         </div>
       )}
     </div>

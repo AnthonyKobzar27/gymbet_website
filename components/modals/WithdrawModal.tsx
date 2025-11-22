@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { requestWithdrawal } from '@/lib/stripe_utils';
 
 interface WithdrawModalProps {
   visible: boolean;
@@ -15,30 +17,56 @@ export default function WithdrawModal({
   onWithdraw,
   maxAmount,
 }: WithdrawModalProps) {
+  const { getUserProfile } = useAuth();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!visible) return null;
 
   const handleWithdraw = async () => {
+    setError(null);
     const withdrawAmount = parseFloat(amount);
+    
     if (!amount || isNaN(withdrawAmount) || withdrawAmount <= 0) {
-      alert('Please enter a valid amount');
+      setError('Please enter a valid amount');
       return;
     }
 
     if (withdrawAmount > maxAmount) {
-      alert(`Insufficient balance. Maximum: $${maxAmount.toFixed(2)}`);
+      setError(`Insufficient balance. Maximum: $${maxAmount.toFixed(2)}`);
       return;
     }
 
     setLoading(true);
     try {
-      await onWithdraw(withdrawAmount);
+      const profile = await getUserProfile();
+      if (!profile) {
+        setError('Please login to withdraw');
+        setLoading(false);
+        return;
+      }
+
+      // Call Stripe withdrawal edge function
+      const result = await requestWithdrawal(withdrawAmount, profile.hash);
+      
+      if (!result.ok) {
+        setError(result.error || 'Failed to process withdrawal');
+        setLoading(false);
+        return;
+      }
+
+      // Success - call the callback to refresh balance
       setAmount('');
       onClose();
-    } catch (error) {
-      alert('Failed to process withdrawal');
+      onWithdraw(withdrawAmount); // This will trigger balance refresh in parent
+      
+      alert(
+        `Your withdrawal of $${withdrawAmount.toFixed(2)} has been requested.\n\nFunds will be processed within 1-3 business days.`
+      );
+    } catch (error: any) {
+      setError(error.message || 'Failed to process withdrawal');
+      console.error('Withdrawal error:', error);
     } finally {
       setLoading(false);
     }
@@ -49,10 +77,16 @@ export default function WithdrawModal({
       <div className="bg-white border-4 border-black p-6 w-full max-w-md shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <div className="flex justify-between items-center mb-4">
           <div className="text-xl font-extrabold tracking-wide">WITHDRAW FUNDS</div>
-          <button onClick={onClose} className="text-xl font-extrabold text-black">
+          <button onClick={onClose} className="text-xl font-extrabold text-black" disabled={loading}>
             X
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border-2 border-red-500">
+            <div className="text-sm font-bold text-red-700">{error}</div>
+          </div>
+        )}
 
         <div className="mb-4">
           <div className="text-sm font-bold text-gray-600 mb-2">

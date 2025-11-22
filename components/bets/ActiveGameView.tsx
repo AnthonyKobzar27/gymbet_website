@@ -78,10 +78,10 @@ export default function ActiveGameView({
                 const workout = activeGame.weekly_schedule?.[dayName as keyof typeof activeGame.weekly_schedule] || 'Rest';
                 return (
                   <div key={index} className="flex-1 text-center min-w-0">
-                    <div className="text-[9px] font-bold text-gray-600 mb-0.5 tracking-wide">
+                    <div className="text-xs font-bold text-gray-600 mb-1 tracking-wide">
                       {dayLabel}
                     </div>
-                    <div className="text-[10px] font-semibold text-black">{workout}</div>
+                    <div className="text-sm font-semibold text-black">{workout}</div>
                   </div>
                 );
               })}
@@ -126,8 +126,8 @@ export default function ActiveGameView({
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => onTabChange('players')}
-          className={`flex-1 bg-white border-[3px] border-black py-3 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
-            selectedTab === 'players' ? 'bg-black' : ''
+          className={`flex-1 border-[3px] border-black py-3 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
+            selectedTab === 'players' ? 'bg-black' : 'bg-white'
           }`}
         >
           <div
@@ -140,8 +140,8 @@ export default function ActiveGameView({
         </button>
         <button
           onClick={() => onTabChange('log')}
-          className={`flex-1 bg-white border-[3px] border-black py-3 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
-            selectedTab === 'log' ? 'bg-black' : ''
+          className={`flex-1 border-[3px] border-black py-3 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
+            selectedTab === 'log' ? 'bg-black' : 'bg-white'
           }`}
         >
           <div

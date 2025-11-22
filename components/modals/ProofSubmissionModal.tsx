@@ -1,6 +1,18 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+/**
+ * CAMERA-ONLY PROOF SUBMISSION MODAL
+ * 
+ * This modal uses ONLY the browser's getUserMedia API to access the camera.
+ * There is NO file input, NO gallery access, NO camera roll access.
+ * Users MUST take a photo directly from the camera in real-time.
+ * 
+ * Security: The photo is captured directly from the live video stream
+ * to a canvas element, then converted to a File blob. There is no way
+ * for users to upload existing photos from their device.
+ */
 
 interface ProofSubmissionModalProps {
   visible: boolean;
@@ -17,28 +29,124 @@ export default function ProofSubmissionModal({
   gameId,
   splitType,
 }: ProofSubmissionModalProps) {
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (visible && !photoPreview) {
+      startCamera();
+    } else if (!visible) {
+      stopCamera();
+      // Reset state when modal closes
+      setPhotoBlob(null);
+      setPhotoPreview(null);
+      setCaption('');
+      setCameraError(null);
+      setPermissionGranted(false);
+    }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    return () => {
+      stopCamera();
+    };
+  }, [visible, photoPreview]);
+
+  const startCamera = async () => {
+    try {
+      setCameraError(null);
+      // CAMERA-ONLY: getUserMedia only accesses camera, NOT gallery/photo library
+      // This API cannot access files from the device storage
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }, // Use back camera on mobile
+        audio: false,
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setPermissionGranted(true);
+      }
+    } catch (error: any) {
+      console.error('Error accessing camera:', error);
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission denied. Please allow camera access to take proof photos.');
+      } else if (error.name === 'NotFoundError') {
+        setCameraError('No camera found on this device.');
+      } else {
+        setCameraError('Failed to access camera. Please try again.');
+      }
     }
   };
 
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const takePicture = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    // Verify we have an active video stream (camera must be running)
+    if (!video.srcObject || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      alert('Camera not ready. Please wait for camera to initialize.');
+      return;
+    }
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // CAMERA-ONLY: Capture frame directly from live video stream
+    // This ensures the photo is taken in real-time, not from gallery
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        // Create a File from the blob captured from camera stream
+        // Timestamp in filename ensures it's a new photo, not an uploaded file
+        const file = new File([blob], `proof-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        setPhotoBlob(file);
+        
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(blob);
+        setPhotoPreview(previewUrl);
+        
+        // Stop camera after taking picture
+        stopCamera();
+      }
+    }, 'image/jpeg', 0.9);
+  };
+
+  const retakePicture = () => {
+    setPhotoBlob(null);
+    setPhotoPreview(null);
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    startCamera();
+  };
+
   const handleSubmit = async () => {
-    if (!photoFile) {
+    if (!photoBlob) {
       alert('Please take a photo first');
       return;
     }
@@ -50,7 +158,7 @@ export default function ProofSubmissionModal({
 
     setSubmitting(true);
     try {
-      await onSubmit(photoFile, caption);
+      await onSubmit(photoBlob as File, caption);
       handleClose();
     } catch (error) {
       console.error('Error submitting proof:', error);
@@ -61,17 +169,25 @@ export default function ProofSubmissionModal({
   };
 
   const handleClose = () => {
-    setPhotoFile(null);
+    stopCamera();
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoBlob(null);
     setPhotoPreview(null);
     setCaption('');
+    setCameraError(null);
+    setPermissionGranted(false);
     onClose();
   };
+
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       {!photoPreview ? (
         <>
-          <div className="flex justify-between items-center pt-16 px-5">
+          <div className="flex justify-between items-center pt-4 px-5 pb-2">
             <button onClick={handleClose} className="p-2.5">
               <div className="text-2xl font-extrabold text-white">✕</div>
             </button>
@@ -81,77 +197,115 @@ export default function ProofSubmissionModal({
             <div className="w-12" />
           </div>
 
-          <div className="flex-1 flex items-center justify-center bg-gray-900">
-            <div className="text-center">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 rounded-full bg-white border-4 border-white flex items-center justify-center mx-auto mb-4"
-              >
-                <div className="w-15 h-15 rounded-full bg-gray-200" />
-              </button>
-              <div className="text-white text-sm font-semibold">Tap to take photo</div>
+          {cameraError ? (
+            <div className="flex-1 flex items-center justify-center px-5">
+              <div className="text-center">
+                <div className="text-white text-lg font-bold mb-4">{cameraError}</div>
+                <button
+                  onClick={startCamera}
+                  className="bg-white border-2 border-black px-6 py-3 text-black font-extrabold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                >
+                  TRY AGAIN
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex-1 relative bg-black overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                {!permissionGranted && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                    <div className="text-white text-center">
+                      <div className="text-lg font-bold mb-2">Requesting camera access...</div>
+                      <div className="text-sm">Please allow camera permission</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-black pb-8 pt-4">
+                <div className="flex justify-center">
+                  <button
+                    onClick={takePicture}
+                    disabled={!permissionGranted}
+                    className="w-20 h-20 rounded-full bg-white border-4 border-white flex items-center justify-center disabled:opacity-50"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-white border-4 border-black" />
+                  </button>
+                </div>
+                <div className="text-white text-sm font-semibold text-center mt-4">
+                  Tap to take photo
+                </div>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>
-          <div className="flex justify-between items-center pt-16 px-5">
-            <button onClick={() => setPhotoPreview(null)} className="p-2.5">
-              <div className="text-base font-extrabold text-white">← RETAKE</div>
+          <div className="flex justify-between items-center pt-4 px-5 pb-2">
+            <button onClick={retakePicture} className="p-2.5">
+              <div className="text-xl font-extrabold text-white">↻</div>
             </button>
             <div className="text-base font-extrabold tracking-wide text-white">
-              ADD CAPTION
+              REVIEW PROOF
             </div>
             <div className="w-12" />
           </div>
 
-          <div className="flex-1 bg-black flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center bg-black overflow-hidden">
             <img
               src={photoPreview}
               alt="Proof preview"
-              className="max-w-full max-h-[60vh] object-contain"
+              className="max-w-full max-h-full object-contain"
             />
           </div>
 
-          <div className="bg-white p-5">
-            <textarea
-              placeholder="Add a caption (e.g., 'Leg day complete!')"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              maxLength={200}
-              className="w-full border-[3px] border-black bg-white p-3 text-base font-semibold min-h-[80px] mb-4 focus:outline-none focus:ring-2 focus:ring-black resize-none"
-            />
+          <div className="bg-black p-5">
+            <div className="mb-4">
+              <div className="text-xs font-bold text-white tracking-wide uppercase mb-2">
+                CAPTION
+              </div>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Describe your workout..."
+                className="w-full border-2 border-black bg-white p-3 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                rows={3}
+              />
+            </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className={`w-full bg-black border-4 border-black py-4.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
-                submitting ? 'opacity-60' : ''
-              }`}
-            >
-              {submitting ? (
-                <div className="text-white text-sm font-extrabold tracking-wide text-center">
-                  Submitting...
-                </div>
-              ) : (
-                <div className="text-white text-sm font-extrabold tracking-wide text-center">
-                  SUBMIT PROOF
-                </div>
-              )}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={retakePicture}
+                disabled={submitting}
+                className="flex-1 bg-white border-2 border-black p-3.5 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-60"
+              >
+                <div className="text-sm font-extrabold tracking-wide text-black">RETAKE</div>
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !caption.trim()}
+                className="flex-1 bg-black border-2 border-black p-3.5 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] disabled:opacity-60"
+              >
+                {submitting ? (
+                  <div className="text-sm font-extrabold tracking-wide text-white">SUBMITTING...</div>
+                ) : (
+                  <div className="text-sm font-extrabold tracking-wide text-white">SUBMIT PROOF</div>
+                )}
+              </button>
+            </div>
           </div>
         </>
       )}
+
+      {/* Hidden canvas for capturing photo */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
-
-
