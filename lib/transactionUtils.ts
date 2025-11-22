@@ -54,3 +54,4 @@ export async function withdraw(userHash: string, amount: number) {
   return changeBalance(userHash, -Math.abs(amount));
 }
 
+

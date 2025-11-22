@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import HeaderWrapper from "@/components/HeaderWrapper";
-import TabBar from "@/components/TabBar";
+import SwipeNavigation from "@/components/SwipeNavigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/useAuth";
 
@@ -15,6 +15,20 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GymBet",
   description: "Discipline challenge community - Bet on your goals and win rewards!",
+  themeColor: "#0b0930",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: "cover",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
@@ -28,8 +42,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <HeaderWrapper />
-            <main className="min-h-screen pb-[70px] lg:pb-0">{children}</main>
-            <TabBar />
+            <SwipeNavigation>
+              <main className="min-h-screen">{children}</main>
+            </SwipeNavigation>
           </AuthProvider>
         </ErrorBoundary>
       </body>

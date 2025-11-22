@@ -68,6 +68,15 @@ body {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  background-color: #0b0930;
+}
+
+/* Safe area insets for iOS devices with notches */
+@supports (padding: max(0px)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Prevent text selection on buttons */
