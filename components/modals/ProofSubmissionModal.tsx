@@ -61,14 +61,71 @@ export default function ProofSubmissionModal({
   const startCamera = async () => {
     try {
       setCameraError(null);
-      // CAMERA-ONLY: getUserMedia only accesses camera, NOT gallery/photo library
-      // This API cannot access files from the device storage
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }, // Use back camera on mobile
-        audio: false,
-      });
       
-      if (videoRef.current) {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+        setCameraError('Camera access requires a browser environment.');
+        return;
+      }
+      
+      // Check HTTPS requirement (getUserMedia requires secure context)
+      const isSecureContext = window.isSecureContext || 
+                             location.protocol === 'https:' || 
+                             location.hostname === 'localhost' || 
+                             location.hostname === '127.0.0.1';
+      
+      if (!isSecureContext) {
+        setCameraError('Camera access requires HTTPS. Please access this site over HTTPS (https://) or use localhost.');
+        return;
+      }
+      
+      // Check if getUserMedia is available
+      let getUserMedia: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
+      
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Modern API - this should trigger permission prompt
+        getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      } else {
+        // Fallback for older browsers
+        const legacyGetUserMedia = (navigator as any).getUserMedia || 
+                                  (navigator as any).webkitGetUserMedia || 
+                                  (navigator as any).mozGetUserMedia || 
+                                  (navigator as any).msGetUserMedia;
+        
+        if (!legacyGetUserMedia) {
+          setCameraError('Camera access is not supported in this browser. Please use a modern browser.');
+          return;
+        }
+        
+        // Wrap legacy API in Promise
+        getUserMedia = (constraints: MediaStreamConstraints) => {
+          return new Promise<MediaStream>((resolve, reject) => {
+            legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+          });
+        };
+      }
+      
+      console.log('Requesting camera access...');
+      
+      // Try with back camera first, fallback to any camera
+      let stream: MediaStream;
+      try {
+        stream = await getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        });
+      } catch (facingModeError: any) {
+        // If facingMode fails, try without it
+        console.log('Back camera not available, trying any camera...');
+        stream = await getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+      
+      console.log('Camera access granted, stream:', stream);
+      
+      if (videoRef.current && stream) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setPermissionGranted(true);
@@ -76,11 +133,15 @@ export default function ProofSubmissionModal({
     } catch (error: any) {
       console.error('Error accessing camera:', error);
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        setCameraError('Camera permission denied. Please allow camera access to take proof photos.');
+        setCameraError('Camera permission denied. Please allow camera access in your browser settings and try again.');
       } else if (error.name === 'NotFoundError') {
         setCameraError('No camera found on this device.');
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        setCameraError('Camera is already in use. Please close other apps using the camera.');
+      } else if (error.name === 'SecurityError' || error.name === 'NotSupportedError') {
+        setCameraError('Camera access requires HTTPS. Please access this site over HTTPS (https://) or use localhost.');
       } else {
-        setCameraError('Failed to access camera. Please try again.');
+        setCameraError(`Failed to access camera: ${error.message || 'Unknown error'}. Please ensure you are using HTTPS.`);
       }
     }
   };

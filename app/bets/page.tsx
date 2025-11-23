@@ -29,6 +29,7 @@ export default function BetsPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
   const [userHash, setUserHash] = useState<string | null>(null);
+  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -90,8 +91,9 @@ export default function BetsPage() {
   };
 
   const handleJoinGame = async (gameId: string) => {
-    if (!userHash) return;
+    if (!userHash || joiningGameId) return; // Prevent multiple simultaneous joins
 
+    setJoiningGameId(gameId);
     try {
       const result = await joinGame(gameId, userHash);
       if (result.ok) {
@@ -102,6 +104,8 @@ export default function BetsPage() {
     } catch (error) {
       console.error('Error joining game:', error);
       alert('Failed to join game');
+    } finally {
+      setJoiningGameId(null);
     }
   };
 
@@ -225,6 +229,7 @@ export default function BetsPage() {
               onJoinGame={handleJoinGame}
               onCreateGame={handleCreateGame}
               formatDate={formatDate}
+              joiningGameId={joiningGameId}
             />
           )}
         </div>
@@ -251,6 +256,7 @@ export default function BetsPage() {
               onJoinGame={handleJoinGame}
               onCreateGame={handleCreateGame}
               formatDate={formatDate}
+              joiningGameId={joiningGameId}
             />
           )}
         </div>

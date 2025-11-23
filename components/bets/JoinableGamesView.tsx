@@ -24,6 +24,7 @@ interface JoinableGamesViewProps {
   onJoinGame: (gameId: string) => void;
   onCreateGame: () => void;
   formatDate: (dateStr: string) => string;
+  joiningGameId?: string | null;
 }
 
 export default function JoinableGamesView({
@@ -31,6 +32,7 @@ export default function JoinableGamesView({
   onJoinGame,
   onCreateGame,
   formatDate,
+  joiningGameId = null,
 }: JoinableGamesViewProps) {
   const days = ['M', 'T', 'W', 'TH', 'F', 'S', 'S'];
   const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -84,9 +86,18 @@ export default function JoinableGamesView({
               </div>
               <button
                 onClick={() => onJoinGame(game.id)}
-                className="w-full bg-[#4CAF50] border-2 border-black py-2.5 mt-1 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
+                disabled={joiningGameId !== null}
+                className={`w-full border-2 border-black py-2.5 mt-1 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
+                  joiningGameId === game.id 
+                    ? 'bg-gray-400 cursor-wait' 
+                    : joiningGameId !== null
+                    ? 'bg-gray-300 cursor-not-allowed opacity-60'
+                    : 'bg-[#4CAF50]'
+                }`}
               >
-                <div className="text-white text-xs font-extrabold tracking-wide">JOIN GAME →</div>
+                <div className="text-white text-xs font-extrabold tracking-wide">
+                  {joiningGameId === game.id ? 'JOINING...' : 'JOIN GAME →'}
+                </div>
               </button>
             </div>
           ))}

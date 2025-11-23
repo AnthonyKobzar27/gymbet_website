@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { getBalance } from './transactionUtils';
-import { addActivityLog } from './activityLogUtils';
+import { addActivityLog, addActivityLogWithId } from './activityLogUtils';
 
 export interface WeeklySchedule {
   monday: string;
@@ -431,6 +431,27 @@ export async function submitProof(
     `0x${userHash.substring(0, 8)} submitted workout proof: ${caption}`,
     'proof'
   );
+
+  // Add to activity feed so it shows up for everyone
+  const timeString = new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const activityMessage = `✓ Submitted workout proof at ${timeString} - "${caption}"`;
+  
+  const activityResult = await addActivityLogWithId(
+    userHash,
+    userHash,
+    activityMessage,
+    'proof',
+    publicUrl,
+    gameId
+  );
+
+  if (!activityResult.ok) {
+    console.error('⚠️ WARNING: Failed to add proof to activity feed!', activityResult.error);
+  }
 
   return { ok: true, isOnTime: true };
 }

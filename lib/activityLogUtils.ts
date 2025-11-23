@@ -51,6 +51,35 @@ export async function addActivityLog(
   return true;
 }
 
+export async function addActivityLogWithId(
+  userHash: string,
+  senderHash: string,
+  message: string,
+  typeofmessage: string,
+  image?: string,
+  gameId?: string | null
+): Promise<{ ok: boolean; id?: number; error?: any }> {
+  const { data, error } = await supabase
+    .from('activity_log')
+    .insert({
+      user_hash: userHash,
+      sender_hash: senderHash,
+      message: message,
+      typeofmessage: typeofmessage,
+      image: image || null,
+      game_id: gameId || null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('failed to add activity log', error);
+    return { ok: false, error };
+  }
+
+  return { ok: true, id: data.id };
+}
+
 export async function voteOnProof(
   activityLogId: number,
   voterHash: string,
