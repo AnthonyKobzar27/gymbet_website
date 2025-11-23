@@ -27,12 +27,7 @@ export default function WeeklySplitCard({
 
   return (
     <div
-      className={`border-4 border-black bg-white mb-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${
-        canLogWorkout && hasActiveGame && onPress
-          ? 'cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-          : ''
-      }`}
-      onClick={canLogWorkout && hasActiveGame ? onPress : undefined}
+      className="border-4 border-black bg-white mb-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
     >
       <div className="p-5">
         <div className="text-lg font-extrabold tracking-wide mb-4">WEEKLY SPLIT</div>
