@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getUserActiveGame, getGameDetails, getJoinableGames, joinGame, leaveGame, submitProof, sendChatMessage } from '@/lib/gameService';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import BackgroundImage from '@/components/BackgroundImage';
 
 export default function BetsPage() {
   const router = useRouter();
@@ -200,12 +201,7 @@ export default function BetsPage() {
 
   return (
     <div className="min-h-screen relative">
-      <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-        style={{
-          backgroundImage: 'url(/AppBackground.jpg)',
-        }}
-      />
+      <BackgroundImage />
       <div className="relative z-10 pt-8 pb-5 px-2.5 lg:px-8 lg:pt-10 lg:pb-8">
         {/* Mobile Layout */}
         <div className="max-w-md mx-auto px-5 lg:hidden">

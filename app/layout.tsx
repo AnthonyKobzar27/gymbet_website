@@ -15,7 +15,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GymBet",
   description: "Discipline challenge community - Bet on your goals and win rewards!",
-  themeColor: "#fdcff3",
+  themeColor: "#f7def1",
   viewport: {
     width: "device-width",
     initialScale: 1,

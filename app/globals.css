@@ -11,7 +11,7 @@
 }
 
 body {
-  background: #fdcff3;
+  background: transparent; /* Transparent so background image shows through */
   color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
@@ -70,7 +70,7 @@ body {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
-  background-color: #fdcff3;
+  background-color: #f7def1; /* Pink for Safari status bar area */
 }
 
 /* Safe area insets for iOS devices with notches */
@@ -78,19 +78,32 @@ html {
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    background-color: #fdcff3;
+    background-color: transparent; /* Transparent so background image shows through */
   }
   
-  /* Top safe area - pink to match header */
+  /* Top safe area - pink to match header (covers the Safari status bar area) */
   body::before {
     content: '';
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: env(safe-area-inset-top);
-    background-color: #fdcff3;
-    z-index: 99999;
+    height: env(safe-area-inset-top); /* Only the actual safe area inset height */
+    background-color: #f7def1;
+    z-index: 5; /* Above background but below app content (z-10) */
+    pointer-events: none;
+  }
+  
+  /* Bottom safe area - dark blue (only covers the bottom safe area) */
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-bottom);
+    background-color: #0b0930;
+    z-index: 5; /* Above background but below app content */
     pointer-events: none;
   }
 }

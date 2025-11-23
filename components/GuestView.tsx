@@ -1,6 +1,7 @@
 'use client';
 
 import ActionButton from './ActionButton';
+import BackgroundImage from './BackgroundImage';
 
 interface GuestViewProps {
   title: string;
@@ -11,12 +12,7 @@ interface GuestViewProps {
 export default function GuestView({ title, subtitle, onLoginPress }: GuestViewProps) {
   return (
     <div className="min-h-screen relative">
-      <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-        style={{
-          backgroundImage: 'url(/AppBackground.jpg)',
-        }}
-      />
+      <BackgroundImage />
       <div className="relative z-10 flex items-center justify-center min-h-screen px-5 py-10 lg:py-10 -mt-[100px] lg:mt-0">
         <div className="w-full max-w-md">
           <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center">

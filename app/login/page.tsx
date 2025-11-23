@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ActionButton from '@/components/ActionButton';
 import LoginModal from '@/components/modals/LoginModal';
 import { useAuth } from '@/hooks/useAuth';
+import BackgroundImage from '@/components/BackgroundImage';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,12 +24,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative">
-      <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-        style={{
-          backgroundImage: 'url(/AppBackground.jpg)',
-        }}
-      />
+      <BackgroundImage />
       <div className="relative z-10 flex items-center justify-center min-h-screen px-5 py-10">
         <div className="w-full max-w-md">
           <div className="border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 mb-4 text-center">

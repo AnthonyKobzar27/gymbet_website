@@ -59,7 +59,7 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
   return (
     <>
       <header className={`sticky top-0 z-50 relative transition-all duration-300 ${
-        isMobile && isScrolled ? 'bg-[#fdcff3]' : 'bg-transparent'
+        isMobile && isScrolled ? 'bg-[#f7def1]' : 'bg-transparent'
       }`}>
         {/* Mobile Collapsed Header - Light Bar */}
         {isMobile && isScrolled ? (

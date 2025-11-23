@@ -18,3 +18,4 @@ export default function ProfitCard({ profit }: ProfitCardProps) {
 }
 
 
+
