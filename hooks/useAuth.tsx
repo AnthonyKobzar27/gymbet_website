@@ -109,9 +109,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signOut();
+      // Clear user and session state first
       setUser(null);
       setSession(null);
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+      }
+      // Clear localStorage to remove any cached session
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('supabase.auth.token');
+        // Clear all Supabase-related localStorage items
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
     } catch (err) {
       console.error('Sign out error:', err);
     } finally {

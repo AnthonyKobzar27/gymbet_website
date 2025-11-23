@@ -230,7 +230,7 @@ export default function BetsPage() {
         </div>
 
         {/* Desktop Layout */}
-        <div className="hidden lg:block max-w-6xl mx-auto">
+        <div className="hidden lg:block max-w-4xl mx-auto">
           {hasActiveGame ? (
             <ActiveGameView
               activeGame={activeGame}

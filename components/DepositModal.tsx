@@ -53,24 +53,8 @@ export default function DepositModal({ visible, onClose, onDeposit }: DepositMod
       // Create Stripe checkout session
       const checkoutUrl = await createCheckoutSession(amount, profile.hash);
       
-      // Open Stripe checkout in new window
-      const newWindow = window.open(checkoutUrl, '_blank');
-      
-      if (!newWindow) {
-        setError('Please allow popups to complete payment');
-        setLoading(false);
-        setSelectedAmount(null);
-        return;
-      }
-
-      // Monitor for payment completion (user will be redirected back)
-      // The webhook will handle updating the balance
-      onDeposit?.(amount);
-      onClose();
-      setCustomAmount(''); // Clear custom amount
-      
-      // Show success message
-      alert('Redirecting to Stripe checkout. Your balance will update after payment is completed.');
+      // Redirect to Stripe checkout (works better than popup, especially on mobile)
+      window.location.href = checkoutUrl;
       
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');

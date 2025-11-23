@@ -18,18 +18,6 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
   const pathname = usePathname();
   const [depositModalVisible, setDepositModalVisible] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const navLinks = [
     { href: '/', label: 'HOME' },
@@ -47,19 +35,7 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 transition-all duration-300 relative ${
-        isScrolled ? '' : ''
-      }`}>
-        {/* Gradient blur effect - weak at bottom, stronger at top */}
-        {isScrolled && (
-          <div 
-            className="absolute inset-0 pointer-events-none backdrop-blur-md"
-            style={{
-              maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,1) 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,1) 100%)',
-            }}
-          />
-        )}
+      <header className="sticky top-0 z-50 relative">
         <div className="relative flex items-center justify-between px-5 py-4 lg:px-8 lg:py-5">
           {/* Left Side - Logo and Navigation */}
           <div className="flex items-center gap-4 lg:gap-6">
@@ -124,6 +100,26 @@ export default function Header({ user, balance = 0, userHash }: HeaderProps) {
             </Link>
           </div>
         </div>
+        
+        {/* Mobile Tabs - Only visible on mobile */}
+        <nav className="lg:hidden">
+          <div className="flex items-center justify-around px-5 py-3">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm font-extrabold tracking-wide ${
+                    isActive ? 'text-black' : 'text-gray-500'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </header>
 
       <LoginModal

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import ArcadeCard from '@/components/ArcadeCard';
 import ActionButton from '@/components/ActionButton';
@@ -15,6 +16,7 @@ import { getBalance, withdraw } from '@/lib/userService';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, loading: authLoading, getUserProfile, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [userHash, setUserHash] = useState<string | undefined>(undefined);
@@ -86,8 +88,37 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.href = '/';
+    try {
+      // Clear local state first
+      setUserHash(undefined);
+      setUsername('');
+      setEmail('');
+      setBalance(0);
+      
+      // Sign out
+      await signOut();
+      
+      // Wait a moment for state to clear
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Force a hard redirect with cache clearing
+      if (typeof window !== 'undefined') {
+        // Clear all caches
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+        // Hard redirect to home page
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Force redirect even on error
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
   };
 
   if (authLoading || loading) {
