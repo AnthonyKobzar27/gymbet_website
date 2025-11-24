@@ -156,12 +156,13 @@ export async function createGame(
   weeklySchedule: WeeklySchedule,
   stake: number
 ): Promise<{ ok: boolean; game?: Game; error?: any }> {
-  if (!stake || typeof stake !== 'number' || !isFinite(stake)) {
+  if (typeof stake !== 'number' || !isFinite(stake)) {
     return { ok: false, error: { message: 'Invalid stake amount' } };
   }
 
-  if (stake < 0.50) {
-    return { ok: false, error: { message: 'Minimum stake is $0.50' } };
+  // Allow $0 (FREE) or minimum $5
+  if (stake !== 0 && stake < 5) {
+    return { ok: false, error: { message: 'Minimum stake is $5 or FREE ($0)' } };
   }
 
   if (stake > 100) {
@@ -225,36 +226,39 @@ export async function joinGame(
     return { ok: false, error: { message: 'Game is full' } };
   }
 
-  const userBalance = await getBalance(userHash);
+  // Only check balance and deduct stake if it's not a free game
+  if (game.stake > 0) {
+    const userBalance = await getBalance(userHash);
 
-  if (userBalance < game.stake) {
-    return { ok: false, error: { message: `Insufficient balance. Need $${game.stake.toFixed(2)}, but you have $${userBalance.toFixed(2)}` } };
-  }
+    if (userBalance < game.stake) {
+      return { ok: false, error: { message: `Insufficient balance. Need $${game.stake.toFixed(2)}, but you have $${userBalance.toFixed(2)}` } };
+    }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('hash', userHash)
-    .single();
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('hash', userHash)
+      .single();
 
-  if (profileError || !profile?.user_id) {
-    console.error('Failed to get user_id:', profileError);
-    return { ok: false, error: { message: 'Failed to get user profile' } };
-  }
+    if (profileError || !profile?.user_id) {
+      console.error('Failed to get user_id:', profileError);
+      return { ok: false, error: { message: 'Failed to get user profile' } };
+    }
 
-  // Deduct stake using RPC function
-  const { data: updateResult, error: updateError } = await supabase
-    .rpc('update_balance_atomic', {
-      p_user_id: profile.user_id,
-      p_user_hash: userHash,
-      p_delta: -game.stake,
-      p_transaction_type: 'stake',
-      p_description: `Staked $${game.stake.toFixed(2)} for game ${gameId}`
-    });
+    // Deduct stake using RPC function
+    const { data: updateResult, error: updateError } = await supabase
+      .rpc('update_balance_atomic', {
+        p_user_id: profile.user_id,
+        p_user_hash: userHash,
+        p_delta: -game.stake,
+        p_transaction_type: 'stake',
+        p_description: `Staked $${game.stake.toFixed(2)} for game ${gameId}`
+      });
 
-  if (updateError || !updateResult?.success) {
-    console.error('Failed to deduct stake:', updateError || updateResult?.error);
-    return { ok: false, error: { message: 'Failed to process stake payment' } };
+    if (updateError || !updateResult?.success) {
+      console.error('Failed to deduct stake:', updateError || updateResult?.error);
+      return { ok: false, error: { message: 'Failed to process stake payment' } };
+    }
   }
 
   const { error: insertError } = await supabase

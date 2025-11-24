@@ -42,19 +42,20 @@ export default function CreateGameModal({
   const handleCreateGame = async () => {
     setError(null);
 
-    if (!stake) {
+    if (stake === '' || stake === null || stake === undefined) {
       setError('Please enter a stake amount');
       return;
     }
 
     const stakeNum = parseFloat(stake);
-    if (isNaN(stakeNum) || stakeNum <= 0) {
+    if (isNaN(stakeNum) || stakeNum < 0) {
       setError('Please enter a valid stake amount');
       return;
     }
 
-    if (stakeNum < 0.50) {
-      setError('Minimum stake is $0.50');
+    // Allow $0 (FREE) or minimum $5
+    if (stakeNum !== 0 && stakeNum < 5) {
+      setError('Minimum stake is $5 or FREE ($0)');
       return;
     }
 

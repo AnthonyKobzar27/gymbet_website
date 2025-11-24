@@ -95,7 +95,9 @@ export default function ActiveGameView({
             <div className="text-[9px] font-semibold tracking-wide text-gray-600 uppercase mb-1">
               STAKE
             </div>
-            <div className="text-lg font-extrabold text-black">${activeGame.stake}</div>
+            <div className="text-lg font-extrabold text-black">
+              {activeGame.stake === 0 ? 'FREE / TEST' : `$${activeGame.stake}`}
+            </div>
           </div>
           <div className="flex-1 text-center">
             <div className="text-[9px] font-semibold tracking-wide text-gray-600 uppercase mb-1">

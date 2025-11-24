@@ -56,7 +56,9 @@ export default function JoinableGamesView({
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="text-sm font-bold text-black">Weekly Split</div>
-                <div className="text-base font-extrabold text-[#4CAF50]">${game.stake}</div>
+                <div className="text-base font-extrabold text-[#4CAF50]">
+                  {game.stake === 0 ? 'FREE / TEST' : `$${game.stake}`}
+                </div>
               </div>
 
               {game.weekly_schedule && (
