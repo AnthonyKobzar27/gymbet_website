@@ -30,7 +30,7 @@ export default function ActivityFeedGym({ items, onVote, onRefresh }: ActivityFe
         </div>
       ) : (
         <>
-          <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto">
+          <div className="max-h-[350px] lg:max-h-[450px] overflow-y-auto pb-4">
             {items.map((item) => (
               <ActivityFeedItem
                 key={item.id}

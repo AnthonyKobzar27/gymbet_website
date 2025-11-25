@@ -32,7 +32,7 @@ export default function ActivityFeedItem({
   const displayHash = `0x${userHash.substring(0, 8)}...`;
 
   return (
-    <div className="border-[3px] border-black bg-gray-50 p-3 mb-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+    <div className="border-[3px] border-black bg-gray-50 p-3 pb-4 mb-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
       <div className="flex justify-between items-center mb-1.5">
         <div className="flex items-center flex-1">
           <div className="mr-2.5">
@@ -55,14 +55,15 @@ export default function ActivityFeedItem({
       >
         {action}
       </div>
-      {/* Show vote buttons for proof items when user can vote */}
-      {type === 'proof' && canVote && onVote && (
-        <div className="flex gap-2 mt-3">
+      {/* Show vote buttons BEFORE the image */}
+      {(canVote || image) && onVote && (
+        <div className="flex gap-2 mt-3 w-full">
           <button
             onClick={() => onVote(id, 'approve')}
             className={`flex-1 border-2 border-black py-2.5 px-3 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
               userVote === 'approve' ? 'bg-black' : 'bg-white'
             }`}
+            style={{ flexShrink: 0 }}
           >
             <div
               className={`text-[11px] font-bold tracking-wide ${
@@ -77,6 +78,7 @@ export default function ActivityFeedItem({
             className={`flex-1 border-2 border-black py-2.5 px-3 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
               userVote === 'reject' ? 'bg-black' : 'bg-white'
             }`}
+            style={{ flexShrink: 0 }}
           >
             <div
               className={`text-[11px] font-bold tracking-wide ${
@@ -89,11 +91,18 @@ export default function ActivityFeedItem({
         </div>
       )}
       {image && (
-        <div className="mt-3 flex justify-center">
+        <div className="mt-3 flex justify-center" style={{ maxHeight: '300px', overflow: 'hidden' }}>
           <img
             src={image}
             alt="Proof"
-            className="max-w-full max-h-64 border-2 border-black object-contain"
+            className="border-2 border-black object-contain"
+            style={{ 
+              maxHeight: '300px',
+              maxWidth: '100%', 
+              width: 'auto',
+              height: 'auto',
+              display: 'block'
+            }}
           />
         </div>
       )}
