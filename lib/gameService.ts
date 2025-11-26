@@ -453,6 +453,14 @@ export async function submitProof(
     gameId
   );
 
+  // Set validation_status to 'pending' for new proof
+  if (activityResult.ok && activityResult.id) {
+    await supabase
+      .from('activity_log')
+      .update({ validation_status: 'pending' })
+      .eq('id', activityResult.id);
+  }
+
   if (!activityResult.ok) {
     console.error('⚠️ WARNING: Failed to add proof to activity feed!', activityResult.error);
   }

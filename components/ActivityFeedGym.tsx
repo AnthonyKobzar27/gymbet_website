@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import ActivityFeedItem from './ActivityFeedItem';
 import ArcadeCard from './ArcadeCard';
 
@@ -11,18 +14,47 @@ interface FeedItem {
   approvals?: number;
   rejections?: number;
   userVote?: 'approve' | 'reject' | null;
+  validationStatus?: 'pending' | 'approved' | 'rejected';
+  timestep?: string;
 }
 
 interface ActivityFeedGymProps {
   items: FeedItem[];
   onVote?: (id: string, voteType: 'approve' | 'reject') => void;
   onRefresh?: () => void;
+  feedMode?: 'proofs' | 'all';
+  onModeChange?: (mode: 'proofs' | 'all') => void;
 }
 
-export default function ActivityFeedGym({ items, onVote, onRefresh }: ActivityFeedGymProps) {
+export default function ActivityFeedGym({ items, onVote, onRefresh, feedMode = 'proofs', onModeChange }: ActivityFeedGymProps) {
   return (
     <ArcadeCard>
-      <div className="text-lg font-extrabold tracking-wide mb-2">ACTIVITY FEED</div>
+      <div className="flex items-center gap-3 mb-2">
+        <div className="text-lg font-extrabold tracking-wide">ACTIVITY FEED</div>
+        {/* Toggle between Proofs and All - close to the text */}
+        <div className="flex gap-1 border-2 border-black bg-white p-0.5">
+          <button
+            onClick={() => onModeChange?.('proofs')}
+            className={`px-3 py-1 text-[10px] font-bold tracking-wide transition-colors ${
+              feedMode === 'proofs'
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-gray-100'
+            }`}
+          >
+            PROOFS
+          </button>
+          <button
+            onClick={() => onModeChange?.('all')}
+            className={`px-3 py-1 text-[10px] font-bold tracking-wide transition-colors ${
+              feedMode === 'all'
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-gray-100'
+            }`}
+          >
+            ALL
+          </button>
+        </div>
+      </div>
 
       {items.length === 0 ? (
         <div className="text-[13px] font-semibold text-black leading-[18px]">
@@ -45,6 +77,8 @@ export default function ActivityFeedGym({ items, onVote, onRefresh }: ActivityFe
                 userVote={item.userVote}
                 canVote={item.type === 'proof'}
                 onVote={onVote}
+                validationStatus={item.validationStatus}
+                timestep={item.timestep}
               />
             ))}
           </div>

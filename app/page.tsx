@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getStats, addWorkout } from '@/lib/userService';
 import { canLogWorkoutToday as checkCanLogWorkoutToday } from '@/lib/homepageUtils';
 import { getUserActiveGame, getGameDetails } from '@/lib/gameService';
-import { getActivityFeed, voteOnProof, removeVote, getVoteCounts, getUserVotes } from '@/lib/activityService';
+import { getActivityFeed, getAllActivityLogs, voteOnProof, removeVote, getVoteCounts, getUserVotes, type ActivityLog } from '@/lib/activityService';
 import { formatDate } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import BackgroundImage from '@/components/BackgroundImage';
@@ -27,6 +27,8 @@ interface FeedItem {
   approvals?: number;
   rejections?: number;
   userVote?: 'approve' | 'reject' | null;
+  validationStatus?: 'pending' | 'approved' | 'rejected';
+  timestep?: string;
 }
 
 export default function HomePage() {
@@ -40,6 +42,7 @@ export default function HomePage() {
   const [profitMade, setProfitMade] = useState(0);
   const [canLogWorkoutToday, setCanLogWorkoutToday] = useState(true);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [feedMode, setFeedMode] = useState<'proofs' | 'all'>('proofs');
   const [splitModalVisible, setSplitModalVisible] = useState(false);
   const [splitInput, setSplitInput] = useState('');
   const [loginModalVisible, setLoginModalVisible] = useState(false);
@@ -107,24 +110,34 @@ export default function HomePage() {
 
   const loadFeed = async (hash: string) => {
     try {
-      const allActivityLogs = await getActivityFeed();
+      let allActivityLogs: ActivityLog[];
       
-      const allProofIds = allActivityLogs
-        .filter(log => log.typeofmessage === 'workout' || log.typeofmessage === 'proof')
-        .map(log => log.id);
+      if (feedMode === 'proofs') {
+        // Get only proofs for voting
+        allActivityLogs = await getActivityFeed();
+        console.log(`[HomePage] Received ${allActivityLogs.length} proofs from getActivityFeed`);
+      } else {
+        // Get all activity logs
+        allActivityLogs = await getAllActivityLogs();
+        console.log(`[HomePage] Received ${allActivityLogs.length} activity logs from getAllActivityLogs`);
+      }
+      
+      // Get vote counts only for proofs (items with images)
+      const proofLogs = allActivityLogs.filter(log => 
+        (log.typeofmessage === 'proof' || log.typeofmessage === 'workout') && log.image
+      );
+      const allProofIds = proofLogs.map(log => log.id);
 
       const [voteCounts, userVotesMap] = await Promise.all([
         getVoteCounts(allProofIds),
         getUserVotes ? getUserVotes(allProofIds, hash) : Promise.resolve(new Map()),
       ]);
 
-      const sortedLogs = allActivityLogs
-        .sort((a, b) => new Date(b.timestep).getTime() - new Date(a.timestep).getTime())
-        .slice(0, 50);
-
-      const items: FeedItem[] = sortedLogs.map(log => {
-        const counts = voteCounts.get(log.id) || { approvals: 0, rejections: 0 };
-        const userVote = userVotesMap?.get(log.id) || null;
+      const items: FeedItem[] = allActivityLogs.map(log => {
+        // Only get vote counts for proofs
+        const isProof = (log.typeofmessage === 'proof' || log.typeofmessage === 'workout') && log.image;
+        const counts = isProof ? (voteCounts.get(log.id) || { approvals: 0, rejections: 0 }) : { approvals: 0, rejections: 0 };
+        const userVote = isProof ? (userVotesMap?.get(log.id) || null) : null;
 
         return {
           id: log.id.toString(),
@@ -136,6 +149,8 @@ export default function HomePage() {
           approvals: counts.approvals,
           rejections: counts.rejections,
           userVote: userVote,
+          validationStatus: log.validation_status || 'pending',
+          timestep: log.timestep,
         };
       });
 
@@ -168,6 +183,18 @@ export default function HomePage() {
       await loadFeed(userHash);
     }
   };
+
+  const handleModeChange = (mode: 'proofs' | 'all') => {
+    setFeedMode(mode);
+  };
+
+  // Reload feed when mode changes
+  useEffect(() => {
+    if (userHash) {
+      loadFeed(userHash);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedMode, userHash]);
 
   const handleLogWorkout = () => {
     setSplitModalVisible(true);
@@ -234,7 +261,13 @@ export default function HomePage() {
 
           <ProfitCard profit={profitMade} />
 
-          <ActivityFeedGym items={feedItems} onVote={handleVote} onRefresh={handleRefresh} />
+          <ActivityFeedGym 
+            items={feedItems} 
+            onVote={handleVote} 
+            onRefresh={handleRefresh}
+            feedMode={feedMode}
+            onModeChange={handleModeChange}
+          />
 
           {!hasActiveGame && (
             <>
@@ -282,7 +315,13 @@ export default function HomePage() {
 
             {/* Right Column - Activity Feed */}
             <div className="col-span-12 lg:col-span-8">
-              <ActivityFeedGym items={feedItems} onVote={handleVote} onRefresh={handleRefresh} />
+              <ActivityFeedGym 
+                items={feedItems} 
+                onVote={handleVote} 
+                onRefresh={handleRefresh}
+                feedMode={feedMode}
+                onModeChange={handleModeChange}
+              />
             </div>
           </div>
         </div>
