@@ -7,6 +7,9 @@ export {
   getUserVotes,
   isWithin48Hours,
   getTimeRemaining,
+  getProofsForValidator,
+  getProofsWithValidators,
+  checkPBFTValidation,
   type ActivityLog,
 } from './activityLogUtils';
 

@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getStats, addWorkout } from '@/lib/userService';
 import { canLogWorkoutToday as checkCanLogWorkoutToday } from '@/lib/homepageUtils';
 import { getUserActiveGame, getGameDetails } from '@/lib/gameService';
-import { getActivityFeed, getAllActivityLogs, voteOnProof, removeVote, getVoteCounts, getUserVotes, type ActivityLog } from '@/lib/activityService';
+import { getActivityFeed, getAllActivityLogs, voteOnProof, removeVote, getVoteCounts, getUserVotes, getProofsForValidator, getProofsWithValidators, checkPBFTValidation, type ActivityLog } from '@/lib/activityService';
 import { formatDate } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import BackgroundImage from '@/components/BackgroundImage';
@@ -27,8 +27,12 @@ interface FeedItem {
   approvals?: number;
   rejections?: number;
   userVote?: 'approve' | 'reject' | null;
+  canVote?: boolean;
   validationStatus?: 'pending' | 'approved' | 'rejected';
   timestep?: string;
+  createdAt?: Date;
+  isPending?: boolean;
+  timeRemaining?: number;
 }
 
 export default function HomePage() {
@@ -121,38 +125,164 @@ export default function HomePage() {
         allActivityLogs = await getAllActivityLogs();
         console.log(`[HomePage] Received ${allActivityLogs.length} activity logs from getAllActivityLogs`);
       }
-      
-      // Get vote counts only for proofs (items with images)
+
+      // Get assigned proofs for this validator
+      const assignedProofs = await getProofsForValidator(hash);
+      const assignedProofIds = new Set(assignedProofs.map(p => p.id));
+
+      // Separate proofs from other activity
       const proofLogs = allActivityLogs.filter(log => 
         (log.typeofmessage === 'proof' || log.typeofmessage === 'workout') && log.image
       );
+      const otherLogs = allActivityLogs.filter(log => 
+        log.typeofmessage !== 'proof' && log.typeofmessage !== 'workout'
+      );
+
       const allProofIds = proofLogs.map(log => log.id);
 
-      const [voteCounts, userVotesMap] = await Promise.all([
+      const [voteCounts, userVotesMap, proofsWithValidators] = await Promise.all([
         getVoteCounts(allProofIds),
-        getUserVotes ? getUserVotes(allProofIds, hash) : Promise.resolve(new Map()),
+        getUserVotes(allProofIds, hash),
+        getProofsWithValidators(allProofIds),
       ]);
 
-      const items: FeedItem[] = allActivityLogs.map(log => {
-        // Only get vote counts for proofs
-        const isProof = (log.typeofmessage === 'proof' || log.typeofmessage === 'workout') && log.image;
-        const counts = isProof ? (voteCounts.get(log.id) || { approvals: 0, rejections: 0 }) : { approvals: 0, rejections: 0 };
-        const userVote = isProof ? (userVotesMap?.get(log.id) || null) : null;
+      // Process proofs with pending status and timer
+      const proofItems: FeedItem[] = proofLogs.map(log => {
+        const counts = voteCounts.get(log.id) || { approvals: 0, rejections: 0 };
+        const userVote = userVotesMap.get(log.id) || null;
+        const isAssignedForValidation = assignedProofIds.has(log.id);
+        const hasValidatorsAssigned = proofsWithValidators.has(log.id);
+        const createdAt = new Date(log.timestep);
+        const now = new Date();
+        const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        
+        // Check if proof has reached consensus (can't vote anymore)
+        const totalVotes = counts.approvals + counts.rejections;
+        const requiredApprovals = log.required_approvals || 0;
+        const totalValidators = log.total_validators || 0;
+        
+        // If proof has validators assigned, use PBFT consensus
+        // If proof has NO validators assigned (legacy), use simple majority with 10+ votes
+        let hasReachedConsensus = false;
+        
+        const MIN_VOTES_FOR_DECISION = 10;
+        
+        // CRITICAL: Proofs need at least 10 votes to reach consensus - if < 10 votes, stay PENDING
+        if (totalVotes < MIN_VOTES_FOR_DECISION) {
+          hasReachedConsensus = false; // Stay pending, allow voting
+        } else if (hasValidatorsAssigned && totalValidators > 0) {
+          // PBFT consensus: requires 2/3 majority (only if >= 10 votes)
+          hasReachedConsensus = 
+            (counts.approvals >= requiredApprovals) ||
+            (counts.rejections > (totalValidators - requiredApprovals)) ||
+            log.validation_status === 'approved' ||
+            log.validation_status === 'rejected';
+        } else {
+          // Legacy consensus: simple majority with 10+ votes
+          // Approve if approvals > rejections AND total votes >= 10
+          // Reject if rejections > approvals AND total votes >= 10
+          const approvalMajority = counts.approvals > counts.rejections;
+          const rejectionMajority = counts.rejections > counts.approvals;
+          hasReachedConsensus = 
+            approvalMajority ||
+            rejectionMajority ||
+            log.validation_status === 'approved' ||
+            log.validation_status === 'rejected';
+        }
+        
+        // Calculate time remaining first
+        const timeRemaining = 48 - hoursSinceCreation;
+        
+        // Determine validation status FIRST
+        // If proof has reached consensus, mark as approved/rejected
+        // If proof is older than 48 hours and hasn't reached consensus, still mark as pending (but won't show at top)
+        let validationStatus: 'pending' | 'approved' | 'rejected' = 'pending';
+        
+        // CRITICAL: Check database status first - if already approved/rejected, use that
+        if (log.validation_status === 'approved' || log.validation_status === 'rejected') {
+          validationStatus = log.validation_status;
+        } else if (totalVotes < MIN_VOTES_FOR_DECISION) {
+          // CRITICAL: If < 10 votes, always stay PENDING (allow voting)
+          validationStatus = 'pending';
+        } else if (hasReachedConsensus) {
+          if (hasValidatorsAssigned && totalValidators > 0) {
+            // PBFT consensus (only reached if >= 10 votes)
+            if (counts.approvals >= requiredApprovals) {
+              validationStatus = 'approved';
+            } else if (counts.rejections > (totalValidators - requiredApprovals)) {
+              validationStatus = 'rejected';
+            }
+          } else {
+            // Legacy consensus: simple majority (only reached if >= 10 votes)
+            if (counts.approvals > counts.rejections) {
+              validationStatus = 'approved';
+            } else if (counts.rejections > counts.approvals) {
+              validationStatus = 'rejected';
+            }
+          }
+        } else {
+          // No consensus reached, stay pending
+          validationStatus = 'pending';
+        }
+        
+        // A proof is pending (yellow background, timer) ONLY if validationStatus is 'pending'
+        // Approved/rejected proofs should NOT show yellow background or be votable
+        const isPending = validationStatus === 'pending';
+
+        // Determine if user can vote:
+        // CRITICAL: Only allow voting if proof is actually pending (not approved/rejected)
+        // - If proof has validators assigned: user must be assigned AND proof must be pending
+        // - If proof has NO validators assigned (legacy): allow anyone to vote if pending (fallback)
+        const canVote = validationStatus === 'pending' && (
+          hasValidatorsAssigned ? isAssignedForValidation : true
+        );
 
         return {
           id: log.id.toString(),
           userHash: log.user_hash,
           action: log.message,
           timestamp: formatDate(log.timestep),
-          type: log.typeofmessage as 'workout' | 'proof' | 'comment' | 'bet' | 'win' | 'loss' | 'leave',
+          type: log.typeofmessage as 'workout' | 'proof',
           image: log.image,
           approvals: counts.approvals,
           rejections: counts.rejections,
-          userVote: userVote,
-          validationStatus: log.validation_status || 'pending',
+          userVote: userVote ?? null,
+          canVote,
+          createdAt,
+          isPending,
+          timeRemaining: isPending ? timeRemaining : undefined,
+          validationStatus,
           timestep: log.timestep,
         };
       });
+
+      // Process other activity items
+      const otherItems: FeedItem[] = otherLogs.map(log => {
+        return {
+          id: log.id.toString(),
+          userHash: log.user_hash,
+          action: log.message,
+          timestamp: formatDate(log.timestep),
+          type: log.typeofmessage as 'comment' | 'bet' | 'win' | 'loss' | 'leave',
+          createdAt: new Date(log.timestep),
+        };
+      });
+
+      // Sort: pending proofs first (newest first), then other proofs, then other activity
+      const pendingProofs = proofItems.filter(item => item.isPending);
+      const finalizedProofs = proofItems.filter(item => !item.isPending);
+      
+      // Sort pending proofs by newest first (most recent submissions at top)
+      pendingProofs.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+      // Sort finalized proofs by newest first (chronological order)
+      finalizedProofs.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+      
+      // Sort other activity by newest first
+      otherItems.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+      // Combine: pending proofs at top (newest first), then finalized proofs, then other activity
+      const items = [...pendingProofs, ...finalizedProofs, ...otherItems].slice(0, 50);
 
       setFeedItems(items);
     } catch (error) {
@@ -165,16 +295,72 @@ export default function HomePage() {
 
     try {
       const activityLogId = parseInt(id);
-      const result = await voteOnProof(activityLogId, userHash, voteType);
-      
-      if (result.ok) {
-        // Reload feed to update vote counts
-        if (userHash) {
-          await loadFeed(userHash);
+      const currentItem = feedItems.find((item) => item.id === id);
+      const isTogglingSameVote = currentItem?.userVote === voteType;
+
+      // Optimistically update UI
+      setFeedItems((prev) =>
+        prev.map((item) => {
+          if (item.id === id) {
+            const wasApproved = item.userVote === 'approve';
+            const wasRejected = item.userVote === 'reject';
+            const isApproving = voteType === 'approve';
+            const isRejecting = voteType === 'reject';
+
+            let newApprovals = item.approvals || 0;
+            let newRejections = item.rejections || 0;
+
+            if (wasApproved) newApprovals--;
+            if (wasRejected) newRejections--;
+
+            if (item.userVote === voteType) {
+              return {
+                ...item,
+                userVote: null,
+                approvals: newApprovals,
+                rejections: newRejections,
+              };
+            } else {
+              if (isApproving) newApprovals++;
+              if (isRejecting) newRejections++;
+
+              return {
+                ...item,
+                userVote: voteType,
+                approvals: newApprovals,
+                rejections: newRejections,
+              };
+            }
+          }
+          return item;
+        })
+      );
+
+      if (isTogglingSameVote) {
+        const result = await removeVote(activityLogId, userHash);
+        if (!result.ok) {
+          throw new Error('Failed to remove vote');
         }
+      } else {
+        const result = await voteOnProof(activityLogId, userHash, voteType);
+        if (!result.ok) {
+          throw new Error('Failed to submit vote');
+        }
+      }
+
+      const validation = await checkPBFTValidation(activityLogId);
+
+      // Reload feed to get updated status from database
+      await loadFeed(userHash);
+
+      if (validation.status === 'approved') {
+        alert('Proof Approved! This proof has been validated by 2/3 majority (PBFT consensus)');
+      } else if (validation.status === 'rejected') {
+        alert('Proof Rejected. This proof was rejected by the validators');
       }
     } catch (error) {
       console.error('Error voting:', error);
+      loadFeed(userHash);
     }
   };
 
