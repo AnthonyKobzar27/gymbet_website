@@ -18,6 +18,8 @@ interface ActivityFeedItemProps {
   onVote?: (id: string, voteType: 'approve' | 'reject') => void;
   validationStatus?: 'pending' | 'approved' | 'rejected';
   timestep?: string;
+  isPending?: boolean;
+  timeRemaining?: number;
 }
 
 export default function ActivityFeedItem({
@@ -34,32 +36,15 @@ export default function ActivityFeedItem({
   onVote,
   validationStatus = 'pending',
   timestep,
+  isPending: isPendingProp,
+  timeRemaining: timeRemainingProp,
 }: ActivityFeedItemProps) {
   const displayHash = `0x${userHash.substring(0, 8)}...`;
   const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
-  // Determine border color based on validation status
-  const getBorderColor = () => {
-    if (!timestep) return 'border-black';
-    
-    const within48h = isWithin48Hours(timestep);
-    if (within48h) {
-      return 'border-yellow-500'; // Yellow for pending (within 48h)
-    }
-    
-    // After 48h, use validation status
-    if (validationStatus === 'approved') {
-      return 'border-green-500'; // Green for approved
-    } else if (validationStatus === 'rejected') {
-      return 'border-red-500'; // Red for rejected
-    }
-    
-    return 'border-yellow-500'; // Default to yellow if status unclear
-  };
-
-  // Update countdown timer every second
+  // Update countdown timer every second (only if timeRemaining prop not provided)
   useEffect(() => {
-    if (!timestep) return;
+    if (!timestep || timeRemainingProp !== undefined) return;
 
     const updateTimer = () => {
       const remaining = getTimeRemaining(timestep);
@@ -70,9 +55,21 @@ export default function ActivityFeedItem({
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [timestep]);
+  }, [timestep, timeRemainingProp]);
 
   const formatTimeRemaining = () => {
+    // Use prop if provided (hours), otherwise use local state
+    if (timeRemainingProp !== undefined) {
+      const hours = Math.floor(timeRemainingProp);
+      const minutes = Math.floor((timeRemainingProp - hours) * 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m`;
+      } else {
+        return `${Math.floor(timeRemainingProp * 60)}s`;
+      }
+    }
     if (!timeRemaining) return null;
     const { hours, minutes, seconds } = timeRemaining;
     if (hours > 0) {
@@ -84,23 +81,31 @@ export default function ActivityFeedItem({
     }
   };
 
-  // Check if this is a proof (workout type with image) - only proofs get colored borders and status
+  // Check if this is a proof (workout type with image)
   const isProof = (type === 'workout' || type === 'proof') && image;
-  const isPending = isProof && timestep ? isWithin48Hours(timestep) : (isProof && validationStatus === 'pending');
-
-  // Get border color - only for proofs, otherwise default black
-  const borderColor = isProof ? getBorderColor() : 'border-black';
+  // Use prop if provided, otherwise calculate based on 48-hour window or validation status
+  const isPending = isPendingProp !== undefined 
+    ? isPendingProp 
+    : (isProof && timestep ? isWithin48Hours(timestep) : (isProof && validationStatus === 'pending'));
 
   return (
-    <div className={`border-[3px] ${borderColor} bg-gray-50 p-3 pb-4 mb-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]`}>
+    <div className="border-[3px] border-black bg-gray-50 p-3 pb-4 mb-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
       <div className="flex justify-between items-center mb-1.5">
         <div className="flex items-center flex-1">
           <div className="mr-2.5">
             <Avatar hash={userHash} size={32} />
           </div>
           <div className="flex-1">
-            <div className="text-xs font-bold text-black tracking-wide mb-0.5">
-              {displayHash}
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="text-xs font-bold text-black tracking-wide">
+                {displayHash}
+              </div>
+              {/* Show timer badge next to user hash if pending */}
+              {isProof && isPending && timeRemainingProp !== undefined && (
+                <div className="text-[10px] font-bold text-black bg-white px-2 py-0.5 border-2 border-black">
+                  {Math.max(0, Math.floor(timeRemainingProp))}h left
+                </div>
+              )}
             </div>
             <div className="text-[9px] font-semibold text-gray-400 tracking-wide">
               {timestamp}
@@ -116,30 +121,15 @@ export default function ActivityFeedItem({
         >
           {action}
         </div>
-        {/* Only show status badges for proofs */}
-        {isProof && (
-          <>
-            {/* Show countdown timer if within 48 hours */}
-            {isPending && timeRemaining && (
-              <div className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded border border-yellow-500">
-                {formatTimeRemaining()} left
-              </div>
-            )}
-            {/* Show status if after 48 hours */}
-            {!isPending && validationStatus && validationStatus !== 'pending' && (
-              <div className={`text-[10px] font-bold px-2 py-1 rounded border ${
-                validationStatus === 'approved' 
-                  ? 'text-green-600 bg-green-100 border-green-500' 
-                  : 'text-red-600 bg-red-100 border-red-500'
-              }`}>
-                {validationStatus === 'approved' ? '✓ APPROVED' : '✕ REJECTED'}
-              </div>
-            )}
-          </>
+        {/* Only show status badges for proofs - show status if after 48 hours */}
+        {isProof && !isPending && validationStatus && validationStatus !== 'pending' && (
+          <div className="text-[10px] font-bold px-2 py-1 rounded border-2 border-black bg-white text-black">
+            {validationStatus === 'approved' ? '✓ APPROVED' : '✕ REJECTED'}
+          </div>
         )}
       </div>
-      {/* Show vote buttons BEFORE the image - only for proofs within 48-hour window */}
-      {isProof && isPending && onVote && (
+      {/* Show vote buttons BEFORE the image - only for proofs that are pending and user can vote */}
+      {isProof && isPending && canVote && onVote && (
         <div className="flex gap-2 mt-3 w-full">
           <button
             onClick={() => onVote(id, 'approve')}

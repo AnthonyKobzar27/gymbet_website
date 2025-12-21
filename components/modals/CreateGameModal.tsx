@@ -53,9 +53,9 @@ export default function CreateGameModal({
       return;
     }
 
-    // Allow $0 (FREE) or minimum $5
-    if (stakeNum !== 0 && stakeNum < 5) {
-      setError('Minimum stake is $5 or FREE ($0)');
+    // Allow $0 (FREE) or minimum $1
+    if (stakeNum !== 0 && stakeNum < 1) {
+      setError('Minimum stake is $1 or FREE ($0)');
       return;
     }
 

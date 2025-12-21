@@ -160,9 +160,9 @@ export async function createGame(
     return { ok: false, error: { message: 'Invalid stake amount' } };
   }
 
-  // Allow $0 (FREE) or minimum $5
-  if (stake !== 0 && stake < 5) {
-    return { ok: false, error: { message: 'Minimum stake is $5 or FREE ($0)' } };
+  // Allow $0 (FREE) or minimum $1
+  if (stake !== 0 && stake < 1) {
+    return { ok: false, error: { message: 'Minimum stake is $1 or FREE ($0)' } };
   }
 
   if (stake > 100) {

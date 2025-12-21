@@ -14,8 +14,11 @@ interface FeedItem {
   approvals?: number;
   rejections?: number;
   userVote?: 'approve' | 'reject' | null;
+  canVote?: boolean;
   validationStatus?: 'pending' | 'approved' | 'rejected';
   timestep?: string;
+  isPending?: boolean;
+  timeRemaining?: number;
 }
 
 interface ActivityFeedGymProps {
@@ -75,10 +78,12 @@ export default function ActivityFeedGym({ items, onVote, onRefresh, feedMode = '
                 approvals={item.approvals}
                 rejections={item.rejections}
                 userVote={item.userVote}
-                canVote={item.type === 'proof'}
+                canVote={item.canVote ?? false}
                 onVote={onVote}
                 validationStatus={item.validationStatus}
                 timestep={item.timestep}
+                isPending={item.isPending}
+                timeRemaining={item.timeRemaining}
               />
             ))}
           </div>

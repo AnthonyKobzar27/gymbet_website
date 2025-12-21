@@ -358,4 +358,141 @@ export async function getUserVotes(
   return votes;
 }
 
+export async function getProofsForValidator(validatorHash: string): Promise<ActivityLog[]> {
+  const { data, error } = await supabase
+    .from('proof_distribution')
+    .select(`
+      activity_log_id,
+      activity_log (*)
+    `)
+    .eq('validator_hash', validatorHash)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Failed to get proofs for validator:', error);
+    return await getFallbackProofs(validatorHash);
+  }
+
+  if (!data || data.length === 0) {
+    return await getFallbackProofs(validatorHash);
+  }
+
+  const activityLogs = data
+    .filter(d => d.activity_log)
+    .map(d => d.activity_log as any as ActivityLog);
+
+  return activityLogs;
+}
+
+async function getFallbackProofs(validatorHash: string): Promise<ActivityLog[]> { 
+  const { data, error } = await supabase
+    .from('activity_log')
+    .select('*')
+    .eq('typeofmessage', 'workout')
+    .neq('user_hash', validatorHash)
+    .order('timestep', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('Failed to get fallback proofs:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getProofsWithValidators(proofIds: number[]): Promise<Set<number>> {
+  if (proofIds.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await supabase
+    .from('proof_distribution')
+    .select('activity_log_id')
+    .in('activity_log_id', proofIds);
+
+  if (error) {
+    console.error('Failed to get proofs with validators:', error);
+    return new Set();
+  }
+
+  if (!data || data.length === 0) {
+    return new Set();
+  }
+
+  return new Set(data.map(d => d.activity_log_id));
+}
+
+export async function checkPBFTValidation(activityLogId: number): Promise<{
+  ok: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  approvals: number;
+  rejections: number;
+  required: number;
+}> {
+  const { data: activityLog, error: logError } = await supabase
+    .from('activity_log')
+    .select('total_validators, required_approvals, validation_status')
+    .eq('id', activityLogId)
+    .single();
+
+  if (logError || !activityLog) {
+    console.error('Failed to get activity log:', logError);
+    return { ok: false, status: 'pending', approvals: 0, rejections: 0, required: 0 };
+  }
+
+  const { data: votes, error: votesError } = await supabase
+    .from('proof_votes')
+    .select('vote_type')
+    .eq('activity_log_id', activityLogId);
+
+  if (votesError) {
+    console.error('Failed to get votes:', votesError);
+    return { ok: false, status: 'pending', approvals: 0, rejections: 0, required: 0 };
+  }
+
+  const approvals = votes?.filter(v => v.vote_type === 'approve').length || 0;
+  const rejections = votes?.filter(v => v.vote_type === 'reject').length || 0;
+  const required = activityLog.required_approvals || 0;
+  const totalVotes = approvals + rejections;
+
+  let newStatus: 'pending' | 'approved' | 'rejected' = activityLog.validation_status || 'pending';
+
+  const MIN_VOTES_FOR_DECISION = 10;
+
+  // CRITICAL: Match frontend logic - proofs need at least 10 votes to reach consensus
+  // If < 10 votes, stay PENDING (do NOT auto-approve)
+  if (totalVotes < MIN_VOTES_FOR_DECISION) {
+    newStatus = 'pending'; // Stay pending if < 10 votes (matches frontend)
+  } else if (approvals >= required) {
+    newStatus = 'approved';
+  } else if (rejections > (activityLog.total_validators || 0) - required) {
+    newStatus = 'rejected';
+  } else {
+    newStatus = 'pending';
+  }
+
+  if (newStatus !== activityLog.validation_status) {
+    const { error: updateError } = await supabase
+      .from('activity_log')
+      .update({ validation_status: newStatus })
+      .eq('id', activityLogId);
+
+    if (updateError) {
+      console.error(`❌ Failed to update proof ${activityLogId} status from '${activityLog.validation_status}' to '${newStatus}':`, updateError);
+      return { ok: false, status: activityLog.validation_status || 'pending', approvals, rejections, required };
+    }
+
+    console.log(`✅ Successfully updated proof ${activityLogId} status from '${activityLog.validation_status}' to '${newStatus}' (${approvals} approvals, ${rejections} rejections, required: ${required})`);
+  }
+
+  return {
+    ok: true,
+    status: newStatus,
+    approvals,
+    rejections,
+    required,
+  };
+}
+
 
