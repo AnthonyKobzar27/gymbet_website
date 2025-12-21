@@ -96,8 +96,13 @@ export default function CreateGameModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-5">
-      <div className="bg-white border-4 border-black p-6 w-full max-w-md shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-5" style={{
+      backgroundImage: 'url(/AppBackground.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}>
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
         <div className="text-xl font-extrabold tracking-wide mb-2 text-center">
           CREATE NEW GAME
         </div>
@@ -180,6 +185,7 @@ export default function CreateGameModal({
               <div className="text-xs font-extrabold tracking-wide text-white">CREATE</div>
             )}
           </button>
+        </div>
         </div>
       </div>
     </div>

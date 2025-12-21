@@ -82,8 +82,14 @@ export default function LoginModal({ visible, onClose }: LoginModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5">
-      <div className="bg-white border-4 border-black p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-5" style={{
+      backgroundImage: 'url(/AppBackground.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundColor: '#fdcff3', // Fallback color matching BackgroundImage
+    }}>
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 w-8 h-8 bg-gray-100 border-2 border-black flex items-center justify-center"
@@ -179,6 +185,7 @@ export default function LoginModal({ visible, onClose }: LoginModalProps) {
             </div>
           </button>
         )}
+        </div>
       </div>
     </div>
   );

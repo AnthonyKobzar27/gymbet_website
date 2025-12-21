@@ -8,6 +8,7 @@ import ActiveGameView from '@/components/bets/ActiveGameView';
 import JoinableGamesView from '@/components/bets/JoinableGamesView';
 import GuestView from '@/components/GuestView';
 import LoginModal from '@/components/modals/LoginModal';
+import GameResultModal from '@/components/modals/GameResultModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserActiveGame, getGameDetails, getJoinableGames, joinGame, leaveGame, submitProof, sendChatMessage } from '@/lib/gameService';
@@ -31,6 +32,17 @@ export default function BetsPage() {
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
   const [userHash, setUserHash] = useState<string | null>(null);
   const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
+  const [gameResultModal, setGameResultModal] = useState<{
+    visible: boolean;
+    type: 'win' | 'loss';
+    amount: number;
+    message: string;
+  }>({
+    visible: false,
+    type: 'win',
+    amount: 0,
+    message: '',
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -84,10 +96,43 @@ export default function BetsPage() {
       // Load joinable games
       const games = await getJoinableGames();
       setJoinableGames(games);
+
+      // Check for game result modal
+      await checkLoginModals(profile.hash);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkLoginModals = async (hash: string) => {
+    if (!hash) return;
+
+    try {
+      // Check for login modal entry
+      const { data: loginModal, error } = await supabase
+        .from('login_modals')
+        .select('type, amount, message')
+        .eq('user_hash', hash)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking login modals:', error);
+        return;
+      }
+
+      if (loginModal) {
+        // Show the game result modal
+        setGameResultModal({
+          visible: true,
+          type: loginModal.type as 'win' | 'loss',
+          amount: loginModal.amount || 0,
+          message: loginModal.message || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error checking login modals:', error);
     }
   };
 
@@ -271,6 +316,18 @@ export default function BetsPage() {
           onSubmit={handleSubmitProof}
           gameId={activeGame.id}
           splitType={activeGame.weekly_schedule?.monday || activeGame.weekly_schedule?.tuesday || 'Push'}
+        />
+      )}
+
+      {/* Game Result Modal */}
+      {userHash && (
+        <GameResultModal
+          visible={gameResultModal.visible}
+          type={gameResultModal.type}
+          amount={gameResultModal.amount}
+          message={gameResultModal.message}
+          userHash={userHash}
+          onClose={() => setGameResultModal({ ...gameResultModal, visible: false })}
         />
       )}
     </div>

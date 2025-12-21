@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import WeeklySplitCard from '@/components/WeeklySplitCard';
 import ProfitCard from '@/components/ProfitCard';
@@ -16,6 +16,8 @@ import { getActivityFeed, getAllActivityLogs, voteOnProof, removeVote, getVoteCo
 import { formatDate } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import BackgroundImage from '@/components/BackgroundImage';
+import GameResultModal from '@/components/modals/GameResultModal';
+import { supabase } from '@/lib/supabase';
 
 interface FeedItem {
   id: string;
@@ -51,6 +53,100 @@ export default function HomePage() {
   const [splitInput, setSplitInput] = useState('');
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const [userHash, setUserHash] = useState<string | null>(null);
+  const [gameResultModal, setGameResultModal] = useState<{
+    visible: boolean;
+    type: 'win' | 'loss';
+    amount: number;
+    message: string;
+  }>({
+    visible: false,
+    type: 'win',
+    amount: 0,
+    message: '',
+  });
+
+  const checkLoginModals = useCallback(async (hash: string) => {
+    if (!hash || !user) {
+      console.log('[GameResultModal] No hash or user provided');
+      return;
+    }
+
+    try {
+      console.log('[GameResultModal] Checking for login modals with hash:', hash);
+      console.log('[GameResultModal] User ID:', user.id);
+      console.log('[GameResultModal] User email:', user.email);
+      
+      // First, try to get the user's profile to verify the hash matches
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('hash, user_id')
+        .eq('hash', hash)
+        .maybeSingle();
+      
+      console.log('[GameResultModal] Profile lookup:', { profile, profileError });
+
+      // Try querying login_modals using RPC function if available, or direct query
+      // The RLS policy might be checking auth.uid() against user_id in profiles
+      let loginModal = null;
+      let error = null;
+
+      // Try direct query first
+      const directQuery = await supabase
+        .from('login_modals')
+        .select('type, amount, message')
+        .eq('user_hash', hash)
+        .maybeSingle();
+      
+      loginModal = directQuery.data;
+      error = directQuery.error;
+
+      // If that fails and we have a profile with user_id, try matching via profiles table
+      if (!loginModal && !error && profile?.user_id) {
+        console.log('[GameResultModal] Trying alternative query via profiles table');
+        const altQuery = await supabase
+          .from('login_modals')
+          .select('type, amount, message')
+          .eq('user_hash', hash)
+          .maybeSingle();
+        
+        loginModal = altQuery.data;
+        error = altQuery.error;
+      }
+
+      console.log('[GameResultModal] Query response:', { 
+        data: loginModal, 
+        error, 
+        hasData: !!loginModal 
+      });
+
+      if (error) {
+        console.error('[GameResultModal] Error checking login modals:', error);
+        console.error('[GameResultModal] Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        return;
+      }
+
+      if (loginModal) {
+        console.log('[GameResultModal] Found modal, showing:', loginModal);
+        // Show the game result modal
+        setGameResultModal({
+          visible: true,
+          type: loginModal.type as 'win' | 'loss',
+          amount: loginModal.amount || 0,
+          message: loginModal.message || '',
+        });
+      } else {
+        console.log('[GameResultModal] No modal found for hash:', hash);
+        console.log('[GameResultModal] This is likely an RLS policy issue. The RLS policy on login_modals table needs to allow users to read rows where user_hash matches their profile hash.');
+      }
+    } catch (error) {
+      console.error('[GameResultModal] Exception checking login modals:', error);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -62,6 +158,27 @@ export default function HomePage() {
 
     loadData();
   }, [user, authLoading]);
+
+  // Check for game result modal when page comes into focus (similar to useFocusEffect)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('[GameResultModal] Window focused, checking modals');
+      if (user && userHash) {
+        checkLoginModals(userHash);
+      } else {
+        console.log('[GameResultModal] No user or userHash:', { user: !!user, userHash: !!userHash });
+      }
+    };
+
+    // Also check immediately when component mounts if user is already logged in
+    if (user && userHash) {
+      console.log('[GameResultModal] Initial check on mount');
+      checkLoginModals(userHash);
+    }
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user, userHash, checkLoginModals]);
 
   const loadData = async () => {
     if (!user) return;
@@ -105,6 +222,9 @@ export default function HomePage() {
 
       // Load activity feed
       await loadFeed(profile.hash);
+
+      // Check for game result modal
+      await checkLoginModals(profile.hash);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -549,6 +669,18 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Game Result Modal */}
+      {userHash && (
+        <GameResultModal
+          visible={gameResultModal.visible}
+          type={gameResultModal.type}
+          amount={gameResultModal.amount}
+          message={gameResultModal.message}
+          userHash={userHash}
+          onClose={() => setGameResultModal({ ...gameResultModal, visible: false })}
+        />
       )}
     </div>
   );
